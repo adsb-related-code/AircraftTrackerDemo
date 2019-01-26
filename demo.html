@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Aircraft tracking demo</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        .aircraft_canvas {
+            display: block;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        #aircarfts_canvas {
+            z-index: 1000;
+        }
+
+        #aircraftTrails_canvas {
+            z-index: 900;
+        }
+
+        #aircraftSelected_canvas {
+            z-index: 1100;
+        }
+
+        #leaflet_map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
+    <link rel="stylesheet" href="leaflet/leaflet.css" />
+</head>
+
+<body>
+    <canvas id="aircraftTrails_canvas" class="aircraft_canvas"></canvas>
+    <canvas id="aircarfts_canvas" class="aircraft_canvas"></canvas>
+    <canvas id="aircraftSelected_canvas" class="aircraft_canvas"></canvas>
+    <div id="leaflet_map"></div>
+    <script src="jquery.js"></script>
+    <script src="leaflet/leaflet-src.js"></script>
+    <script src="map.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            /* Init */
+			var vrsServerUrl = "https://localhost:44398/home";
+            var zoom = 8;
+            var mapCenterLatLng = new LatLng(47.5, 19.0);
+
+            var mapIsMoving = false;
+            var mapIsZooming = false;
+
+            var aircraft_icon_img = new Image(20, 20);
+            aircraft_icon_img.src = "arrow.png";
+            var rectWidth = 10;
+
+            var aircraftSelected_icon_img = new Image(20, 20);
+            aircraftSelected_icon_img.src = "arrow_selected.png";
+
+            var aircrafts = [];
+            var selectedAircraft;
+            var selectedAircraftLastUpdated;
+
+            var leaflet_map = L.map("leaflet_map").setView([mapCenterLatLng.Lat, mapCenterLatLng.Lng], zoom);
+            L.tileLayer('http://map.adsbexchange.com/mapproxy/tiles/1.0.0/osm/osm_grid/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                maxZoom: 18,
+                id: 'mapbox.streets',
+                accessToken: 'your.mapbox.access.token'
+            }).addTo(leaflet_map);
+
+            var leaflet_map_pane = document.getElementsByClassName("leaflet-map-pane")[0];
+
+            var leaflet_map_div = document.getElementById("leaflet_map");
+            var aircrafts_canvas = document.getElementById("aircarfts_canvas");
+            var aircraftTrails_canvas = document.getElementById("aircraftTrails_canvas");
+            var aircraftSelected_canvas = document.getElementById("aircraftSelected_canvas");
+
+            SetCanvasSizeToLeafletMapSize();
+
+            var aircraft_cavas_context = aircrafts_canvas.getContext("2d");
+            var aircraftTrails_canvas_context = aircraftTrails_canvas.getContext("2d");
+            var aircraftSelected_canvas_context = aircraftSelected_canvas.getContext("2d");
+            var leaftletMapTopXY = GetLeafletMapTopXY();
+
+            leaflet_map.addEventListener("click", function (e) {
+                var x = e.containerPoint.x;
+                var y = e.containerPoint.y;
+
+                for (var i = 0; i < aircrafts.length; i++) {
+                    var aircraft = aircrafts[i];
+                    if (x > (aircraft.MapX - (20 / 2)) && x < (aircraft.MapX + (20 / 2)) && y > (aircraft.MapY - (20 / 2)) && y < (aircraft.MapY + (20 / 2))) {
+                        selectedAircraft = aircraft;
+
+                        DrawSelectedAircraft();
+
+                        return;
+                    }
+                }
+
+                selectedAircraft = null;
+                ClearAircraftTrailCanvas();
+                ClearAircrafSelectedlCanvas();
+
+            }, true);
+
+            GetJsonAndDraw();
+
+            setInterval(GetJsonAndDraw, 3000);
+
+            /* End of Init*/
+
+            /* Events */
+            window.onresize = function (event) {
+                SetCanvasSizeToLeafletMapSize();
+            };
+
+            leaflet_map.on("movestart", function (e) {
+                console.log("movestart");
+                mapIsMoving = true;
+            });
+
+            leaflet_map.on("moveend", function (e) {
+                console.log("moveend");
+                mapIsMoving = false;
+            });
+
+            leaflet_map.on("move", function (e) {
+                console.log("move");
+                if (mapIsMoving === true || mapIsZooming === true) {
+                    UpdateAndDrawAircraftsFromMemory();
+                }
+            });
+
+            leaflet_map.on("viewreset", function (e) {
+                console.log("viewreset");
+            });
+
+            leaflet_map.on("zoomstart", function (e) {
+                console.log("zoomstart");
+                mapIsZooming = true;
+            });
+
+            leaflet_map.on("zoomend", function (e) {
+                console.log("zoomend");
+                mapIsZooming = false;
+            });
+
+            /* End of events*/
+
+            /* Objects */
+            function Aircraft() {
+                var self = this;
+
+                self.Id;
+                self.LatLng;
+                self.Rotation;
+                self.PointXY;
+
+                self.MapX;
+                self.MapY;
+
+                self.Call;
+                self.Reg;
+
+                self.Trail = [];
+            }
+
+            /* End of Objects*/
+
+            /* Functions */
+            function SetCanvasSizeToLeafletMapSize() {
+                aircrafts_canvas.width = leaflet_map_div.clientWidth;
+                aircrafts_canvas.height = leaflet_map_div.clientHeight;
+
+                aircraftTrails_canvas.width = leaflet_map_div.clientWidth;
+                aircraftTrails_canvas.height = leaflet_map_div.clientHeight;
+
+                aircraftSelected_canvas.width = leaflet_map_div.clientWidth;
+                aircraftSelected_canvas.height = leaflet_map_div.clientHeight;
+            }
+
+            function ClearAllCanvas() {
+                ClearAircraftCanvas();
+                ClearAircraftTrailCanvas();
+                ClearAircrafSelectedlCanvas();
+            }
+
+            function ClearAircraftCanvas() {
+                aircraft_cavas_context.clearRect(0, 0, aircrafts_canvas.width, aircrafts_canvas.height);
+            }
+
+            function ClearAircraftTrailCanvas() {
+                aircraftTrails_canvas_context.clearRect(0, 0, aircraftTrails_canvas.width, aircraftTrails_canvas.height);
+            }
+
+            function ClearAircrafSelectedlCanvas() {
+                aircraftSelected_canvas_context.clearRect(0, 0, aircraftTrails_canvas.width, aircraftTrails_canvas.height);
+            }
+
+            function GetLeafletMapTopXY() {
+                var leafletMapBounds = leaflet_map.getBounds();
+                return GetPointXYFromLatLng(new LatLng(leafletMapBounds._northEast.lat, leafletMapBounds._southWest.lng), leaflet_map._zoom);
+            }
+
+            function UpdateAndDrawAircraftsFromJson(data) {
+                ClearAllCanvas();
+
+                var date = new Date();
+
+                var leafletTopLeftXY = GetLeafletMapTopXY();
+
+                for (var i = 0; i < data.acList.length; i++) {
+                    var ac = data.acList[i];
+
+                    if (ac.Lat) {
+                        if (ac.Long) {
+                            var rotation = GetRotationInRad(ac.Trak);
+
+                            var aircraft = new Aircraft();
+                            aircraft.Id = ac.Id;
+                            aircraft.LatLng = new LatLng(ac.Lat, ac.Long);
+                            aircraft.Rotation = rotation;
+                            aircraft.PointXY = GetPointXYFromLatLng(aircraft.LatLng, leaflet_map._zoom);
+                            aircraft.MapX = aircraft.PointXY.X - leafletTopLeftXY.X;
+                            aircraft.MapY = aircraft.PointXY.Y - leafletTopLeftXY.Y;
+                            aircraft.Trail = ac.Cot;
+                            aircraft.Call = ac.Call;
+                            aircraft.Reg = ac.Reg;
+
+                            aircrafts.push(aircraft);
+
+                            if (selectedAircraft) {
+                                if (selectedAircraft.Id === aircraft.Id) {
+                                    selectedAircraft = aircraft;
+                                    selectedAircraftLastUpdated = date.getTime();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for (var i = 0; i < aircrafts.length; i++) {
+                    var aircraft = aircrafts[i];
+                    DrawAircraft(aircraft);
+                }
+
+                if (selectedAircraftLastUpdated) {
+                    if (selectedAircraftLastUpdated + 1000 * 20 < date.getTime()) {
+                        selectedAircraftLastUpdated = null;
+                        selectedAircraft = null;
+                        ClearAircrafSelectedlCanvas();
+                        ClearAircraftTrailCanvas();
+                    }
+                }
+
+                DrawSelectedAircraft();
+            }
+
+            function UpdateAndDrawAircraftsFromMemory() {
+                ClearAllCanvas();
+
+                var leafletTopLeftXY = GetLeafletMapTopXY();
+
+                for (var i = 0; i < aircrafts.length; i++) {
+                    var aircraft = aircrafts[i];
+
+                    if (mapIsZooming === true) {
+                        aircraft.PointXY = GetPointXYFromLatLng(aircraft.LatLng, leaflet_map._zoom);
+                    }
+
+                    aircraft.MapX = aircraft.PointXY.X - leafletTopLeftXY.X;
+                    aircraft.MapY = aircraft.PointXY.Y - leafletTopLeftXY.Y;
+
+                    DrawAircraft(aircraft);
+
+                    if (selectedAircraft) {
+                        if (selectedAircraft.Id === aircraft.Id) {
+                            selectedAircraft = aircraft;
+                        }
+                    }
+                }
+
+                DrawSelectedAircraft();
+            }
+
+            function DrawAircraft(aircraft, selected) {
+                var translateX = aircraft.MapX;
+                var translateY = aircraft.MapY;
+
+                var canvas = aircraft_cavas_context;
+                var icon = aircraft_icon_img;
+
+                if (selected === true) {
+                    DrawAircraft(aircraft, false);
+
+                    canvas = aircraftSelected_canvas_context;
+                    icon = aircraftSelected_icon_img;
+                }
+
+                canvas.save();
+                canvas.translate(translateX, translateY);
+
+                if (aircraft.Rotation) {
+                    canvas.rotate(aircraft.Rotation);
+                }
+
+                canvas.drawImage(icon, -(20 / 2), - (20 / 2), 20, 20);
+                canvas.restore();
+
+                var text = "";
+                if (aircraft.Reg) {
+                    text = aircraft.Reg;
+                }
+
+                if (aircraft.Call) {
+                    if (text != "") {
+                        text += " / ";
+                    }
+
+                    text += aircraft.Call;
+                }
+
+                if (selected === true) {
+                    if (text != "") {
+                        canvas.save();
+                        canvas.translate(translateX + 10, translateY + 5);
+                        canvas.fillText(text, 0, 0);
+                        canvas.restore();
+                    }
+                }
+            }
+
+            function GetJsonAndDraw() {
+                if (mapIsMoving === false) {
+                    var bounds = leaflet_map.getBounds();
+
+                    var url = vrsServerUrl + '/AircraftList?fNBnd=' + bounds._northEast.lat + '&fSBnd=' + bounds._southWest.lat + '&fWBnd=' + bounds._southWest.lng + '&fEBnd=' + bounds._northEast.lng + '&trFmt=fa&refreshTrails=1';
+                    console.log(url);
+                    /*$.getJSON(url, function (data) {
+                        console.log("Aircraft count: " + data.acList.length);
+
+                        aircrafts = [];
+
+                        UpdateAndDrawAircraftsFromJson(data);
+                    });*/
+
+                    $.get(url, function (data) {
+                        //var response = JSON.parse(data);
+                        console.log("Aircraft count: " + data.acList.length);
+
+                        aircrafts = [];
+
+                        UpdateAndDrawAircraftsFromJson(data);
+                    }, 'json');
+                }
+            }
+
+            function DrawSelectedAircraft() {
+                if (selectedAircraft) {
+                    ClearAircrafSelectedlCanvas();
+                    var leafletTopLeftXY = GetLeafletMapTopXY();
+
+                    if (mapIsZooming === true) {
+                        selectedAircraft.PointXY = GetPointXYFromLatLng(selectedAircraft.LatLng, leaflet_map._zoom);
+                    }
+
+                    selectedAircraft.MapX = selectedAircraft.PointXY.X - leafletTopLeftXY.X;
+                    selectedAircraft.MapY = selectedAircraft.PointXY.Y - leafletTopLeftXY.Y;
+
+                    DrawAircraft(selectedAircraft, true);
+                    // aircraft_cavas_context.save();
+
+                    // aircraft_cavas_context.beginPath();
+                    // aircraft_cavas_context.arc(selectedAircraft.MapX, selectedAircraft.MapY, 20, 0, 2 * Math.PI);
+                    // aircraft_cavas_context.stroke();
+
+                    // aircraft_cavas_context.restore();
+
+                    if (selectedAircraft.Trail) {
+                        ClearAircraftTrailCanvas();
+                        aircraftTrails_canvas_context.lineWidth = 3;
+                        aircraftTrails_canvas_context.strokeStyle = "#0039ff";
+
+                        aircraftTrails_canvas_context.save();
+
+                        aircraftTrails_canvas_context.beginPath();
+
+                        for (var i = 0; i < selectedAircraft.Trail.length; i += 4) {
+                            var pointXY = GetPointXYFromLatLng(new LatLng(selectedAircraft.Trail[i], selectedAircraft.Trail[i + 1]), leaflet_map._zoom);
+
+                            var x = pointXY.X - leafletTopLeftXY.X;
+                            var y = pointXY.Y - leafletTopLeftXY.Y;
+
+                            if (i === 0) {
+                                aircraftTrails_canvas_context.moveTo(x, y);
+                            }
+                            else {
+                                aircraftTrails_canvas_context.lineTo(x, y);
+                            }
+                        }
+
+                        aircraftTrails_canvas_context.stroke();
+
+                        aircraftTrails_canvas_context.restore();
+                    }
+                }
+            }
+
+            /* End of functions */
+        });
+    </script>
+</body>
+
+</html>
