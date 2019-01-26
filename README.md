@@ -7,10 +7,16 @@ Install VRS Custom Content Plugin:
 Clone this repository
 
 Configure Custom Content Plugin settings:
+
   Go to: Tools \ Plugins \ Options (Custom Content Plugin)
+  
   Add new row
+  
   Insert file: set to cloned repository\demo_plugin.html
+  
   At: Start of Body
+  
   Address: /index.html
+  
   Site root folder: cloned repository folder
   
