@@ -1,0 +1,32 @@
+
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        .aircraft_canvas {
+            display: block;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        #aircarfts_canvas {
+            z-index: 1000;
+        }
+
+        #aircraftTrails_canvas {
+            z-index: 900;
+        }
+
+        #aircraftSelected_canvas {
+            z-index: 1100;
+        }
+
+        #leaflet_map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            cursor: initial;
+        }

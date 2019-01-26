@@ -1,45 +1,5 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-    <meta charset="utf-8">
-    <title>Aircraft tracking demo</title>
-    <style>
-        body {
-            padding: 0;
-            margin: 0;
-        }
-
-        .aircraft_canvas {
-            display: block;
-            position: absolute;
-            pointer-events: none;
-        }
-
-        #aircarfts_canvas {
-            z-index: 1000;
-        }
-
-        #aircraftTrails_canvas {
-            z-index: 900;
-        }
-
-        #aircraftSelected_canvas {
-            z-index: 1100;
-        }
-
-        #leaflet_map {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: 0;
-            right: 0;
-        }
-    </style>
     <link rel="stylesheet" href="leaflet/leaflet.css" />
-</head>
-
-<body>
+    <link rel="stylesheet" href="style.css" />
     <canvas id="aircraftTrails_canvas" class="aircraft_canvas"></canvas>
     <canvas id="aircarfts_canvas" class="aircraft_canvas"></canvas>
     <canvas id="aircraftSelected_canvas" class="aircraft_canvas"></canvas>
@@ -51,7 +11,7 @@
     <script>
         $(document).ready(function () {
             /* Init */
-			var vrsServerUrl = "pub-vrs.adsbexchange.com/32030"; /* Example value: http://localhost/VirtualRadar */
+			var vrsServerUrl = "";
             var zoom = 8;
             var mapCenterLatLng = new LatLng(47.5, 19.0);
 
@@ -343,18 +303,9 @@
                 if (mapIsMoving === false) {
                     var bounds = leaflet_map.getBounds();
 
-                    var url = vrsServerUrl + '/AircraftList?fNBnd=' + bounds._northEast.lat + '&fSBnd=' + bounds._southWest.lat + '&fWBnd=' + bounds._southWest.lng + '&fEBnd=' + bounds._northEast.lng + '&trFmt=fa&refreshTrails=1';
+                    var url = vrsServerUrl + 'AircraftList.json?fNBnd=' + bounds._northEast.lat + '&fSBnd=' + bounds._southWest.lat + '&fWBnd=' + bounds._southWest.lng + '&fEBnd=' + bounds._northEast.lng + '&trFmt=fa&refreshTrails=1';
                     console.log(url);
-                    /*$.getJSON(url, function (data) {
-                        console.log("Aircraft count: " + data.acList.length);
-
-                        aircrafts = [];
-
-                        UpdateAndDrawAircraftsFromJson(data);
-                    });*/
-
                     $.get(url, function (data) {
-                        //var response = JSON.parse(data);
                         console.log("Aircraft count: " + data.acList.length);
 
                         aircrafts = [];
@@ -418,6 +369,3 @@
             /* End of functions */
         });
     </script>
-</body>
-
-</html>
