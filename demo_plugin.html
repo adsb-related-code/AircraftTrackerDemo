@@ -18,12 +18,12 @@
         var mapIsMoving = false;
         var mapIsZooming = false;
 
-        var aircraft_icon_img = new Image(20, 20);
-        aircraft_icon_img.src = "arrow.png";
-        var rectWidth = 10;
+        var aircraft_icon_img = new Image(40, 40);
+        aircraft_icon_img.src = "marker1.png";
+        var marker_width = 35;
 
-        var aircraftSelected_icon_img = new Image(20, 20);
-        aircraftSelected_icon_img.src = "arrow_selected.png";
+        var aircraftSelected_icon_img = new Image(40, 40);
+        aircraftSelected_icon_img.src = "marker1_selected.png";
 
         var aircrafts = [];
         var selectedAircraft;
@@ -57,7 +57,7 @@
 
             for (var i = 0; i < aircrafts.length; i++) {
                 var aircraft = aircrafts[i];
-                if (x > (aircraft.MapX - (20 / 2)) && x < (aircraft.MapX + (20 / 2)) && y > (aircraft.MapY - (20 / 2)) && y < (aircraft.MapY + (20 / 2))) {
+                if (x > (aircraft.MapX - (marker_width / 2)) && x < (aircraft.MapX + (marker_width / 2)) && y > (aircraft.MapY - (marker_width / 2)) && y < (aircraft.MapY + (marker_width / 2))) {
                     selectedAircraft = aircraft;
 
                     DrawSelectedAircraft();
@@ -273,7 +273,7 @@
                 canvas.rotate(aircraft.Rotation);
             }
 
-            canvas.drawImage(icon, -(20 / 2), - (20 / 2), 20, 20);
+            canvas.drawImage(icon, -(marker_width / 2), - (marker_width / 2), marker_width, marker_width);
             canvas.restore();
 
             var text = "";
