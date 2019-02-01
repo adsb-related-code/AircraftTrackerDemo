@@ -17,6 +17,7 @@
 
         var mapIsMoving = false;
         var mapIsZooming = false;
+        var ajaxRequestIsRunning = false;
 
         var aircraft_icon_img = new Image(40, 40);
         aircraft_icon_img.src = "marker1.png";
@@ -34,7 +35,7 @@
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
             maxZoom: 18,
             id: 'mapbox.streets',
-            accessToken: 'your.mapbox.access.token'
+            accessToken: ''
         }).addTo(leaflet_map);
 
         var leaflet_map_pane = document.getElementsByClassName("leaflet-map-pane")[0];
@@ -138,14 +139,17 @@
 
         /* Functions */
         function SetCanvasSizeToLeafletMapSize() {
-            aircrafts_canvas.width = leaflet_map_div.clientWidth;
-            aircrafts_canvas.height = leaflet_map_div.clientHeight;
+            var width = leaflet_map_div.clientWidth;
+            var height = leaflet_map_div.clientHeight;
 
-            aircraftTrails_canvas.width = leaflet_map_div.clientWidth;
-            aircraftTrails_canvas.height = leaflet_map_div.clientHeight;
+            aircrafts_canvas.width = width;
+            aircrafts_canvas.height = height;
 
-            aircraftSelected_canvas.width = leaflet_map_div.clientWidth;
-            aircraftSelected_canvas.height = leaflet_map_div.clientHeight;
+            aircraftTrails_canvas.width = width;
+            aircraftTrails_canvas.height = height;
+
+            aircraftSelected_canvas.width = width;
+            aircraftSelected_canvas.height = height;
         }
 
         function ClearAllCanvas() {
@@ -181,28 +185,26 @@
             for (var i = 0; i < data.acList.length; i++) {
                 var ac = data.acList[i];
 
-                if (ac.Lat) {
-                    if (ac.Long) {
-                        var rotation = GetRotationInRad(ac.Trak);
+                if (ac.Lat && ac.Long && ac.Species === 1) {
+                    var rotation = GetRotationInRad(ac.Trak);
 
-                        var aircraft = new Aircraft();
-                        aircraft.Id = ac.Id;
-                        aircraft.LatLng = new LatLng(ac.Lat, ac.Long);
-                        aircraft.Rotation = rotation;
-                        aircraft.PointXY = GetPointXYFromLatLng(aircraft.LatLng, leaflet_map._zoom);
-                        aircraft.MapX = aircraft.PointXY.X - leafletTopLeftXY.X;
-                        aircraft.MapY = aircraft.PointXY.Y - leafletTopLeftXY.Y;
-                        aircraft.Trail = ac.Cot;
-                        aircraft.Call = ac.Call;
-                        aircraft.Reg = ac.Reg;
+                    var aircraft = new Aircraft();
+                    aircraft.Id = ac.Id;
+                    aircraft.LatLng = new LatLng(ac.Lat, ac.Long);
+                    aircraft.Rotation = rotation;
+                    aircraft.PointXY = GetPointXYFromLatLng(aircraft.LatLng, leaflet_map._zoom);
+                    aircraft.MapX = aircraft.PointXY.X - leafletTopLeftXY.X;
+                    aircraft.MapY = aircraft.PointXY.Y - leafletTopLeftXY.Y;
+                    aircraft.Trail = ac.Cot;
+                    aircraft.Call = ac.Call;
+                    aircraft.Reg = ac.Reg;
 
-                        aircrafts.push(aircraft);
+                    aircrafts.push(aircraft);
 
-                        if (selectedAircraft) {
-                            if (selectedAircraft.Id === aircraft.Id) {
-                                selectedAircraft = aircraft;
-                                selectedAircraftLastUpdated = date.getTime();
-                            }
+                    if (selectedAircraft) {
+                        if (selectedAircraft.Id === aircraft.Id) {
+                            selectedAircraft = aircraft;
+                            selectedAircraftLastUpdated = date.getTime();
                         }
                     }
                 }
@@ -291,8 +293,12 @@
 
             if (selected === true) {
                 if (text != "") {
+                    var x = translateX + marker_width / 2 + 5;
+                    var y = translateY + marker_width / 4 - 6;
+
                     canvas.save();
-                    canvas.translate(translateX + 10, translateY + 5);
+                    canvas.font = "bold 12px Arial";
+                    canvas.translate(x, y);
                     canvas.fillText(text, 0, 0);
                     canvas.restore();
                 }
@@ -300,21 +306,26 @@
         }
 
         function GetJsonAndDraw() {
-            if (mapIsMoving === false) {
+            if (mapIsMoving === false && ajaxRequestIsRunning === false) {
+                ajaxRequestIsRunning = true;
                 var bounds = leaflet_map.getBounds();
 
                 var url = vrsServerUrl + 'AircraftList.json?fNBnd=' + bounds._northEast.lat + '&fSBnd=' + bounds._southWest.lat + '&fWBnd=' + bounds._southWest.lng + '&fEBnd=' + bounds._northEast.lng + '&trFmt=fa&refreshTrails=1';
                 console.log(url);
-                
+
                 var xhttp = new XMLHttpRequest();
                 xhttp.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        var json = JSON.parse(this.responseText);
-                        console.log("Aircraft count: " + json.acList.length);
+                    if (this.readyState == 4) {
+                        ajaxRequestIsRunning = false;
 
-                        aircrafts = [];
+                        if (this.status == 200) {
+                            var json = JSON.parse(this.responseText);
+                            console.log("Aircraft count: " + json.acList.length);
 
-                        UpdateAndDrawAircraftsFromJson(json);
+                            aircrafts = [];
+
+                            UpdateAndDrawAircraftsFromJson(json);
+                        }
                     }
                 };
                 xhttp.open("GET", url, true);
