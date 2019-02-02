@@ -13,7 +13,7 @@
         /* Init */
         var vrsServerUrl = "";
         var zoom = 8;
-        var mapCenterLatLng = new LatLng(47.5, 19.0);
+        var mapCenterLatLong = new LatLong(47.5, 19.0);
 
         var mapIsMoving = false;
         var mapIsZooming = false;
@@ -30,7 +30,7 @@
         var selectedAircraft;
         var selectedAircraftLastUpdated;
 
-        var leaflet_map = L.map("leaflet_map").setView([mapCenterLatLng.Lat, mapCenterLatLng.Lng], zoom);
+        var leaflet_map = L.map("leaflet_map").setView([mapCenterLatLong.Lat, mapCenterLatLong.Lng], zoom);
         L.tileLayer('http://map.adsbexchange.com/mapproxy/tiles/1.0.0/osm/osm_grid/{z}/{x}/{y}.png', {
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
             maxZoom: 18,
@@ -122,7 +122,7 @@
             var self = this;
 
             self.Id;
-            self.LatLng;
+            self.LatLong;
             self.Rotation;
             self.PointXY;
 
@@ -172,7 +172,7 @@
 
         function GetLeafletMapTopXY() {
             var leafletMapBounds = leaflet_map.getBounds();
-            return GetPointXYFromLatLng(new LatLng(leafletMapBounds._northEast.lat, leafletMapBounds._southWest.lng), leaflet_map._zoom);
+            return GetPointXYFromLatLong(new LatLong(leafletMapBounds._northEast.lat, leafletMapBounds._southWest.lng), leaflet_map._zoom);
         }
 
         function UpdateAndDrawAircraftsFromJson(data) {
@@ -190,9 +190,9 @@
 
                     var aircraft = new Aircraft();
                     aircraft.Id = ac.Id;
-                    aircraft.LatLng = new LatLng(ac.Lat, ac.Long);
+                    aircraft.LatLong = new LatLong(ac.Lat, ac.Long);
                     aircraft.Rotation = rotation;
-                    aircraft.PointXY = GetPointXYFromLatLng(aircraft.LatLng, leaflet_map._zoom);
+                    aircraft.PointXY = GetPointXYFromLatLong(aircraft.LatLong, leaflet_map._zoom);
                     aircraft.MapX = aircraft.PointXY.X - leafletTopLeftXY.X;
                     aircraft.MapY = aircraft.PointXY.Y - leafletTopLeftXY.Y;
                     aircraft.Trail = ac.Cot;
@@ -236,7 +236,7 @@
                 var aircraft = aircrafts[i];
 
                 if (mapIsZooming === true) {
-                    aircraft.PointXY = GetPointXYFromLatLng(aircraft.LatLng, leaflet_map._zoom);
+                    aircraft.PointXY = GetPointXYFromLatLong(aircraft.LatLong, leaflet_map._zoom);
                 }
 
                 aircraft.MapX = aircraft.PointXY.X - leafletTopLeftXY.X;
@@ -278,7 +278,30 @@
             canvas.drawImage(icon, -(marker_width / 2), - (marker_width / 2), marker_width, marker_width);
             canvas.restore();
 
-            var text = "";
+            if (aircraft.Call && selected === true) {
+                canvas.font = "bold 12px Arial";
+                var callSignTextLength = canvas.measureText(aircraft.Call).width;
+
+                // draw rectangle
+                canvas.save();
+                canvas.translate(translateX - callSignTextLength / 2, translateY + marker_width / 2 + 5);
+
+                canvas.fillStyle = "#FFFFFF";
+
+                canvas.fillRect(-5, -5, callSignTextLength + 10, 10 + 10);
+
+                canvas.restore();
+
+                // draw text
+                canvas.save();
+                canvas.translate(translateX - callSignTextLength / 2, translateY + marker_width / 2 + 5);
+
+                canvas.fillText(aircraft.Call, 0, 9);
+                
+                canvas.restore();
+            }
+
+            /*var text = "";
             if (aircraft.Reg) {
                 text = aircraft.Reg;
             }
@@ -302,7 +325,7 @@
                     canvas.fillText(text, 0, 0);
                     canvas.restore();
                 }
-            }
+            }*/
         }
 
         function GetJsonAndDraw() {
@@ -339,7 +362,7 @@
                 var leafletTopLeftXY = GetLeafletMapTopXY();
 
                 if (mapIsZooming === true) {
-                    selectedAircraft.PointXY = GetPointXYFromLatLng(selectedAircraft.LatLng, leaflet_map._zoom);
+                    selectedAircraft.PointXY = GetPointXYFromLatLong(selectedAircraft.LatLong, leaflet_map._zoom);
                 }
 
                 selectedAircraft.MapX = selectedAircraft.PointXY.X - leafletTopLeftXY.X;
@@ -364,7 +387,7 @@
                     aircraftTrails_canvas_context.beginPath();
 
                     for (var i = 0; i < selectedAircraft.Trail.length; i += 4) {
-                        var pointXY = GetPointXYFromLatLng(new LatLng(selectedAircraft.Trail[i], selectedAircraft.Trail[i + 1]), leaflet_map._zoom);
+                        var pointXY = GetPointXYFromLatLong(new LatLong(selectedAircraft.Trail[i], selectedAircraft.Trail[i + 1]), leaflet_map._zoom);
 
                         var x = pointXY.X - leafletTopLeftXY.X;
                         var y = pointXY.Y - leafletTopLeftXY.Y;

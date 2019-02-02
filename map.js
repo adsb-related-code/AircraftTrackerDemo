@@ -1,4 +1,4 @@
-function LatLng(lat, lng) {
+function LatLong(lat, lng) {
     var self = this;
 
     self.Lat = lat;
@@ -30,9 +30,9 @@ function GetPixelY(latitude, zoom) {
     return Math.floor((0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * Math.PI)) * 256 * Math.pow(2, zoom));
 }
 
-function GetPointXYFromLatLng(latLng, zoom) {
-    var x = GetPixelX(latLng.Lng, zoom);
-    var y = GetPixelY(latLng.Lat, zoom);
+function GetPointXYFromLatLong(latLong, zoom) {
+    var x = GetPixelX(latLong.Lng, zoom);
+    var y = GetPixelY(latLong.Lat, zoom);
 
     return new PointXY(x, y);
 }
