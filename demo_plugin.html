@@ -141,15 +141,20 @@
         function SetCanvasSizeToLeafletMapSize() {
             var width = leaflet_map_div.clientWidth;
             var height = leaflet_map_div.clientHeight;
+            var ratio = window.devicePixelRatio;
 
-            aircrafts_canvas.width = width;
-            aircrafts_canvas.height = height;
+            ScaleCanvasSize(aircrafts_canvas, width, height, ratio);
+            ScaleCanvasSize(aircraftTrails_canvas, width, height, ratio);
+            ScaleCanvasSize(aircraftSelected_canvas, width, height, ratio);
+        }
 
-            aircraftTrails_canvas.width = width;
-            aircraftTrails_canvas.height = height;
+        function ScaleCanvasSize(canvas, width, height, ratio){
+            canvas.width = width * ratio;
+            canvas.height = height * ratio;
 
-            aircraftSelected_canvas.width = width;
-            aircraftSelected_canvas.height = height;
+            canvas.style.width = width + "px";
+            canvas.style.height = height + "px";
+            canvas.getContext("2d").scale(ratio, ratio);
         }
 
         function ClearAllCanvas() {
