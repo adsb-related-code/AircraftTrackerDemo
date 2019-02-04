@@ -101,10 +101,6 @@
             }
         });
 
-        leaflet_map.on("viewreset", function (e) {
-            console.log("viewreset");
-        });
-
         leaflet_map.on("zoomstart", function (e) {
             console.log("zoomstart");
             mapIsZooming = true;
@@ -131,6 +127,12 @@
 
             self.Call;
             self.Reg;
+            self.From;
+            self.To;
+            self.Type;
+            self.Op;
+            self.OpIcao;
+            self.Mdl;
 
             self.Trail = [];
         }
@@ -203,6 +205,12 @@
                     aircraft.Trail = ac.Cot;
                     aircraft.Call = ac.Call;
                     aircraft.Reg = ac.Reg;
+                    aircraft.From = ac.From;
+                    aircraft.To = ac.To;
+                    aircraft.Type = ac.Type;
+                    aircraft.Op = ac.Op;
+                    aircraft.OpIcao = ac.OpIcao;
+                    aircraft.Mdl = ac.Mdl;
 
                     aircrafts.push(aircraft);
 
@@ -283,26 +291,62 @@
             canvas.drawImage(icon, -(marker_width / 2), - (marker_width / 2), marker_width, marker_width);
             canvas.restore();
 
-            if (aircraft.Call && selected === true) {
-                canvas.font = "bold 12px Arial";
-                var callSignTextLength = canvas.measureText(aircraft.Call).width;
-
+            if (selected === true) {
+                var fontSize = 12;
                 // draw rectangle
                 canvas.save();
-                canvas.translate(translateX - callSignTextLength / 2, translateY + marker_width / 2 + 5);
+                canvas.translate(translateX - marker_width / 2, translateY + marker_width / 2 + 5);
 
                 canvas.fillStyle = "#FFFFFF";
-
-                canvas.fillRect(-5, -5, callSignTextLength + 10, 10 + 10);
+                canvas.strokeStyle = "#ededed";
+                canvas.fillRect(00, 0, 90, (fontSize  + 2) * 4 );
+                canvas.strokeRect(0, 0, 90, (fontSize  + 2) * 4 );
 
                 canvas.restore();
 
                 // draw text
                 canvas.save();
-                canvas.translate(translateX - callSignTextLength / 2, translateY + marker_width / 2 + 5);
+                canvas.font = "bold " + fontSize + "px Arial";
+                canvas.fillStyle = "#000000";
+                canvas.textBaseline = 'top';
+                canvas.translate(translateX - marker_width / 2 + 3, translateY + marker_width / 2 + 5 + 3);
 
-                canvas.fillText(aircraft.Call, 0, 9);
-                
+                if(aircraft.Reg){
+                    canvas.fillText(aircraft.Reg, 2, 2);
+                }
+
+                if(aircraft.Call){
+                    canvas.fillText(aircraft.Call, 2, fontSize + 2);
+                }
+
+                var fromToText;
+
+                if(aircraft.From){
+                    var firstWord = aircraft.From.substr(0, aircraft.From.indexOf(" "));
+                    if(firstWord){
+                        fromToText = firstWord;
+                    }
+                }
+
+                if(aircraft.To){
+                    var firstWord = aircraft.To.substr(0, aircraft.To.indexOf(" "));
+                    if(firstWord){
+                        fromToText = fromToText + " - " + firstWord;
+                    }
+                }
+
+                if(fromToText){
+                    canvas.fillText(fromToText, 2, fontSize * 2 + 2);   
+                }
+
+                if(aircraft.OpIcao){
+                    canvas.fillText(aircraft.OpIcao, 2, fontSize * 3 + 2);
+                }
+
+                if(aircraft.Type){
+                    canvas.fillText(aircraft.Type, 30, fontSize * 3 + 2);
+                }
+
                 canvas.restore();
             }
 
