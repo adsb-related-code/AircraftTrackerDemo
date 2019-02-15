@@ -21,13 +21,13 @@ function GetRotationInRad(deg) {
 }
 
 function GetPixelX(longtitude, zoom) {
-    return Math.floor(((longtitude + 180) / 360) * 256 * Math.pow(2, zoom));
+    return ((longtitude + 180) / 360) * 256 * Math.pow(2, zoom);
 }
 
 function GetPixelY(latitude, zoom) {
     var sinLatitude = Math.sin(latitude * Math.PI / 180)
 
-    return Math.floor((0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * Math.PI)) * 256 * Math.pow(2, zoom));
+    return (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * Math.PI)) * 256 * Math.pow(2, zoom);
 }
 
 function GetPointXYFromLatLong(latLong, zoom) {
